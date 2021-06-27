@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * Implementation of {@link NotificationService} that manages notification from a database.
@@ -38,27 +39,35 @@ public class NotificationServiceImpl implements NotificationService {
   protected final RecipientRepository recipientRepository;
 
   /**
+   * Instant supplier to get the current instant. It is for test purpose.
+   */
+  private final Supplier<Instant> timeSupplier;
+
+  /**
    * Constructor.
    */
   public NotificationServiceImpl(
           EntityManager entityManager,
           NotificationRepository notificationRepository,
-          RecipientRepository recipientRepository) {
+          RecipientRepository recipientRepository,
+          Supplier<Instant> timeSupplier) {
     this.entityManager = entityManager;
     this.notificationRepository = notificationRepository;
     this.recipientRepository = recipientRepository;
+    this.timeSupplier = timeSupplier;
   }
 
   /**
    * Creates a {@link Notification} from {@link WorkflowNotification}.
    *
    * @param workflowNotification the {@link WorkflowNotification} emitted by the workflow engine.
+   * @param timeSupplier a time supplier to indicate the current time.
    * @return the created {@link Notification}.
    */
-  public static Notification create(WorkflowNotification workflowNotification) {
+  public static Notification create(WorkflowNotification workflowNotification, Supplier<Instant> timeSupplier) {
     return new Notification(workflowNotification.getType(),
             workflowNotification.getMessage(),
-            Instant.now(),
+            timeSupplier.get(),
             true,
             workflowNotification.getId());
   }
@@ -66,7 +75,7 @@ public class NotificationServiceImpl implements NotificationService {
   @Override
   @Transactional
   public Notification saveNotificationAndRecipients(WorkflowNotification workflowNotification, Set<String> users, Set<String> groups) {
-    Notification record = this.notificationRepository.save(create(workflowNotification));
+    Notification record = this.notificationRepository.save(create(workflowNotification, this.timeSupplier));
 
     Iterator<Recipient> userIterator = users.stream().map(u -> new Recipient(record.getId(), u, null, (byte) 0)).iterator();
     Iterator<Recipient> groupIterator = groups.stream().map(g -> new Recipient(record.getId(), null, g, (byte) 0)).iterator();

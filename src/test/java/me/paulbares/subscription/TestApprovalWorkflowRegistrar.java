@@ -11,6 +11,9 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.TemporalAmount;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -62,7 +65,8 @@ public class TestApprovalWorkflowRegistrar {
 
     int id = 3;
     final int startId = id;
-    IntStream.range(0, id).forEach(i -> createAndPublish(i, Collections.singleton(user1.getUser()), Collections.emptySet()));
+    IntStream.range(0, id).forEach(i -> createAndPublish(i, Collections.singleton(user1.getUser()),
+            Collections.emptySet()));
     Subscription sub = this.registrar.subscribe(user1, subscriber);
 
     assertThat(subscriber.initialIds)
@@ -302,9 +306,14 @@ public class TestApprovalWorkflowRegistrar {
 
     final LongSupplier idGenerator = new AtomicLong()::getAndIncrement;
 
+    Instant now = Instant.now();
+
     @Override
     public synchronized Notification saveNotificationAndRecipients(WorkflowNotification notification, Set<String> users, Set<String> groups) {
-      Notification n = NotificationServiceImpl.create(notification);
+      Notification n = NotificationServiceImpl.create(notification, () -> this.now);
+      // Change now each time the method is called to be sure two notifications do not have the same #createAt value
+      // which can cause unpredictability in tests.
+      this.now = this.now.plus(Duration.ofSeconds(1)); // within sync block so safe.
       for (String user : users) {
         notifByUser.computeIfAbsent(user, k -> new HashSet<>()).add(n);
       }

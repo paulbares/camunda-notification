@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import javax.persistence.EntityManager;
+import java.time.Instant;
 
 /**
  * The configuration of for the {@link NotificationService} and {@link ApproverWorkflowRegistrar}.
@@ -28,7 +29,7 @@ public class NotificationConfiguration {
 
   @Bean
   public NotificationServiceImpl notificationService() {
-    return new NotificationServiceImpl(manager, notificationRepository, recipientRepository);
+    return new NotificationServiceImpl(manager, notificationRepository, recipientRepository, () -> Instant.now());
   }
 
   @Bean
